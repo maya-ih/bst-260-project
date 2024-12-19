@@ -1,0 +1,54 @@
+---
+title: "covid-wrangling"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r preprocess data}
+covid_data <- read_csv("~/260-project/data/covid-data.csv")
+
+# format dates
+covid_data <- covid_data %>%
+  mutate(
+    start_date = as.Date(start_date, format = "%m/%d/%Y"),
+    end_date = as.Date(end_date, format = "%m/%d/%Y"),
+    date_updated = as.Date(date_updated, format = "%m/%d/%Y")
+  ) %>%
+  filter(new_deaths >= 0)
+```
+
+```{r extrapolation}
+last_week <- max(covid_data$end_date)
+future_weeks <- seq(from = last_week + 7, to = as.Date("2024-12-31"), by = "7 days")
+
+# apply extrapolation for each state
+source('~/260-project/code/funcs.R')
+extrapolated_data <- covid_data %>%
+  group_by(state) %>%
+  group_modify(~ extrapolate(.x, future_weeks)) %>%
+  ungroup()
+
+# combine original and extrapolated data
+original_data <- covid_data %>% select(state, end_date, new_cases, new_deaths)
+combined_data <- bind_rows(original_data, extrapolated_data)
+```
+
+```{r adding pop estimates}
+# pivot pop data
+pop_data <- read_excel("~/260-project/data/state-pop.xlsx") %>%
+  pivot_longer(cols = starts_with("20"), names_to = "year", values_to = "population") %>%
+  mutate(year = as.integer(year), state = State) %>%
+  select(state, year, population)
+
+# merge based on state and date
+final_data <- combined_data %>%
+  mutate(year = lubridate::year(end_date)) %>%
+  left_join(pop_data, by = c("state", "year"))
+
+write_csv(final_data, "~/260-project/data/cleaned-project-data.csv")
+```
