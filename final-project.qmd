@@ -28,7 +28,8 @@ p <- df_rates %>% pivot_longer(c(cases_per_100000, deaths_per_100000),
   theme(
     legend.position = "none",
     axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+  ) +
+  ggtitle('COVID-19 Cases and Deaths by State Overtime')
 print(p)
 ```
 
