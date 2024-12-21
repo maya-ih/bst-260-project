@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.555">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>final-project</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="Untitled_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Untitled_files/libs/quarto-html/quarto.js"></script>
+<script src="Untitled_files/libs/quarto-html/popper.min.js"></script>
+<script src="Untitled_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Untitled_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Untitled_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Untitled_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Untitled_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Untitled_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Untitled_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">final-project</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Cici Cheng &amp; Maya Harwood BST 260 20 December 2024</p>
+<section id="abstract" class="level2">
+<h2 class="anchored" data-anchor-id="abstract">Abstract</h2>
+<p>Just months after SARS-CoV-2 began spreading across the globe, COVID-19 became a leading cause of death in the United States. However, mortality surveillance has often excluded COVID-19 patients who died of comorbidities, underestimating the pandemic’s death toll. Our project has two aims: first, compute and compare deaths rates by state from January 2020 to December 2024, and second, determine if COVID-19 deaths explain changes in estimated excess mortality rates during the same period. We use data from the CDC and US Census Bureau to identify four waves of COVID-19 cases and deaths, calculate COVID-19 death rates and excess deaths for each state, and compare these rates across the four defined periods. The US Virgin Islands consistently demonstrated the lowest COVID-19 death rates, while New Jersey and Minnesota experienced some of the highest burden of disease during various waves of the pandemic. South Dakota consistently held the lowest excess mortality rate, while Florida consistently had the highest. However, when comparing these rates to the statistical model’s estimated mortality, we found that COVID-19 deaths did not fully account for the excess mortality.These findings highlight the need for targeted interventions to address state-level barriers to the prevention and treatment of COVID-19 and other respiratory infectious diseases.</p>
+</section>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>The COVID-19 pandemic vastly impacted public health on a global scale, with the United States emerging as a leader in morbidity and mortality. From late 2019 onward, the transmission of SARS-CoV-2, the virus that causes COVID-19, followed a pattern of successive waves that overwhelmed healthcare systems attempting to treat growing numbers of COVID-19 patients. As public health practitioners worked to understand the impact of the pandemic on mortality in the US, underestimation caught the attention of academia, government agencies, and the general public as a barrier to accurate estimates. Many mortality surveillance systems failed to account for COVID-19 patients whose deaths were primarily attributed to pre-existing comorbidities, masking the true toll of the illness on populations across states.</p>
+<p>As the pandemic progressed, it became evident that the impact of COVID-19 was far from uniform. Significant disparities emerged between states, influenced by factors such as population density, healthcare infrastructure, policy responses, and the timing of interventions like mask mandates and vaccination campaigns. These differences underscore the importance of analyzing COVID-19 outcomes at the state level to identify patterns and determinants of mortality. Such analysis is crucial for informing future pandemic preparedness and response strategies, particularly in understanding how public health measures can mitigate disparities in disease outcomes.</p>
+<p>Another critical aspect of the pandemic was the evolving virulence of SARS-CoV-2. Over time, new variants emerged with varying levels of transmissibility and severity. These changes in viral characteristics, combined with shifting levels of immunity from vaccination and prior infections, contributed to fluctuating mortality rates across different waves of the pandemic. Investigating these trends provides valuable insights into how viral evolution interacts with population health measures to influence overall disease burden. Additionally, analyzing state-level differences in death rates offers a unique opportunity to assess how factors like healthcare access and public health policies affect the virulence of a disease in real-world settings.</p>
+<p>This project aims to address several key questions: How did COVID-19 mortality vary across states and pandemic waves? Which states experienced the lowest and highest death rates during each period, and what factors may explain these disparities? Can trends in excess mortality be explained by COVDI-19? We aim to advance our understanding of the pandemic’s effects on the US and provide actionable insights for improving public health systems in the face of future outbreaks of respiratory infectious diseases.</p>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>To investigate trends in COVID-19 and excess mortality from January 2020 to December 2024, we conducted an analysis using the tidyverse package in R. We sourced data from the CDC and the US Census Bureau. The initial dataset included weekly COVID-19 cases and death counts by state. Using R, we formatted date columns to ensure consistency in temporal variables and filtered out entries with negative values for new deaths to address data errors. Population data, spanning 2020 to 2024, was reshaped into a long format to facilitate dynamic merging with the COVID-19 dataset. This allowed us to match each row in the COVID-19 dataset with its corresponding population estimate based on state and year. Any missing values were handled by calculating the mean population for each state.</p>
+<p>The CDC, and other public health agencies, stopped collecting COVID-19 case and death counts in May 2023. To extend the dataset beyond the last recorded week of data, we used linear regression models to extrapolate weekly case and death counts for each state through December 2024. The extrapolated data was merged with the original dataset to create a comprehensive record covering the entire study period. To ensure realistic predictions, constraints were applied to the regression output to prevent negative values. The study period was divided into four waves based on patterns in cases and deaths observed in a time series plot. The waves were as follows: January 2020 to July 2020, August 2020 to July 2021, August 2021 to April 2022, and May 2023 to December 2024. Each observation was assigned to a wave based on its end date. These waves served as a framework for analyzing trends in mortality throughout the pandemic.</p>
+<p>Death rates per 100,000 population were calculated for each state and wave by summing weekly deaths within each wave and dividing by the average state population during the same period. These rates were scaled to a per-100,000 basis to allow for comparisons across states. To identify states with the best and worst outcomes during each wave, we determined the states with the lowest and highest death rates. Additionally, to investigate trends in virulence of COVID-19, we analyzed death rates as a proxy for disease severity. The average number of deaths per 100,000 population was computed for each wave, providing insight into shifts in the lethality of the virus over time.</p>
+<p>Excess mortality is defined as the difference between the observed number of deaths from all causes during the pandemic and the expected number of deaths based on historical mortality data. To estimate weekly expected deaths, we employed an over-dispersed Poisson model (R package: excessmort), which accounts for temporal trends, seasonality, and natural variability in mortality. This model has been validated through simulations and against historical data. We then compared the difference between the expected and observed deaths, to assess whether COVID-19-related deaths could explain the excess mortality. If observed excess deaths exceed the expected number, it suggests that COVID-19-related deaths could&nbsp; account for the excess mortality. Conversely, if observed excess deaths are lower than or equal to the expected number, it indicates that COVID-19 is unlikely to explain the excess mortality.</p>
+<p>Similar to the way of calculating the average COVID-19 deaths, excess mortality per 100,000 population was calculated for each state and wave by summing weekly excess deaths within each wave and dividing by the average state population during the same period. These rates were scaled to a per-100,000 basis to allow for comparisons across states. To identify states with the best and worst outcomes during each wave, we determined the states with the lowest and highest excess mortality rates.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>This analysis examined COVID-19 mortality trends across the United States from January 2020 to December 2024. The results highlight significant temporal and geographic disparities in death rates, offering insights into the factors driving these differences.</p>
+<p>The figure below illustrates the progression of COVID-19 death rates across states during the four pandemic waves: January to July 2020, August 2020 to July 2021, August 2021 to April 2022, and May 2023 to December 2024. Each wave reflects a distinct pattern of peaks and troughs, corresponding to changes in transmission dynamics, public health interventions, and healthcare capacity. The first wave was characterized by steep mortality, highlighting the devastating impact of initial outbreaks. Subsequent waves showed more geographically dispersed patterns. The final wave, extending through late 2024, exhibited lower mortality overall, reflecting widespread vaccination efforts and improved treatment options.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figs/plot.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 1: COVID-19 cases and deaths per 100,000 population by state from January 2020 to December 2024.</figcaption>
+</figure>
+</div>
+<p>The states with the lowest and highest death rates during each wave are presented in the table below. The US Virgin Islands consistently ranked as the state with the lowest mortality rates across all waves, benefiting from its small population, isolated geography, and early implementation of public health measures. In contrast, states like New Jersey and Minnesota recorded the highest death rates during the pandemic’s most severe waves. The disparities underscore how state-specific factors, such as population density, healthcare infrastructure, and policy responses, shaped mortality outcomes. Notably, states with higher levels of poverty and limited healthcare access tended to fare worse, suggesting that systemic inequities exacerbated the pandemic’s impact in vulnerable communities.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figs/table.png" class="img-fluid figure-img"></p>
+<figcaption>Table 1: States with lowest and highest average number of COVID-19 deaths per 100,000 population during each wave of the pandemic.</figcaption>
+</figure>
+</div>
+<p>To assess changes in the virulence of COVID-19, we analyzed COVID-19 deaths per 10,000 population at the national level as a proxy for disease severity. The highest death rate was observed during the second wave, when limited knowledge of the virus and shortages of medical supplies hampered effective treatment. Over subsequent waves, improvements in clinical care and the availability of vaccines contributed to a decline in virulence, as reflected in lower death rate. By the final wave, mortality had stabilized at relatively low levels, underscoring the role of widespread immunity in mitigating disease severity.</p>
+<p>Overall, we identified substantial differences in COVID-19 death rates across states and waves, shaped by a combination of public health factors. States with robust healthcare infrastructure and proactive public health measures, such as the US Virgin Islands, consistently achieved better outcomes, while systemic inequities left other states disproportionately affected. Changes in virulence over time emphasize the need for long-term public health strategies during health crises.</p>
+<p>To determine whether COVID-19 deaths can account for the excess mortality, we compared the observed and expected excess deaths. Our model-based estimates revealed that in 46,789 instances (45%), observed excess deaths were greater than expected, while in 46,789 instances (55%), observed excess deaths were lower than expected. Based on these findings, we can conclude that COVID-19 deaths do not fully account for the excess mortality.</p>
+<p>The table below shows the states with the lowest and highest excess death rates during each wave. South Dakota consistently had the lowest mortality rates across all waves, likely due to its relatively low population and population density, which helped reduce the transmission of infectious diseases like COVID-19. On the other hand, Florida consistently reported the highest death rates during the pandemic’s most severe waves. Similar to the COVID-19 mortality rates discussed earlier, states with higher poverty levels and limited healthcare access generally experienced worse outcomes, indicating that systemic inequities worsened the pandemic’s impact on vulnerable communities. <img src="figs/table2.png" class="img-fluid" alt="Table 2: States with lowest and highest average excess deaths per 100,000 population during each wave of the pandemic."></p>
+</section>
+<section id="discussion" class="level2">
+<h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
+<p>This analysis of mortality trends in the United States from January 2020 to December 2024 provides critical insights into how the pandemic impacted public health at the state level. By examining death rates across four distinct waves, the study highlights significant disparities influenced by state-level factors such as unique public health interventions, geography, and access to healthcare.</p>
+<p>The findings reveal that states with robust healthcare infrastructure and low population density, such as the U.S. Virgin Islands, consistently achieved the lowest mortality rates. Conversely, states like New Jersey and Minnesota experienced some of the highest death rates during the most severe pandemic waves. These geographic disparities underscore the importance of equitable access to healthcare and the need for targeted interventions in states with greater socioeconomic vulnerabilities. For instance, states with higher poverty levels or limited hospital capacity faced compounding challenges that intensified the pandemic’s impact. This emphasizes the necessity of bolstering healthcare systems and addressing structural inequities to better prepare for future health crises.</p>
+<p>Trends in virulence trends provide additional insights into how the pandemic evolved. Deaths per 100,000 population, used as a proxy for disease severity, were highest during the second wave, reflecting overwhelmed healthcare systems and the absence of vaccines. Over subsequent waves, increased knowledge of COVID-19 and subsequent advancements in prevention and clinical care mitigated death rates. By the fourth wave, mortality stabilized at lower levels, indicating that widespread immunity, whether through vaccination or prior infections, played a critical role in reducing disease severity. These findings underscore the importance of continued investment in vaccine development and distribution, as well as maintaining public health infrastructure capable of responding to emerging respiratory infectious diseases.</p>
+<p>The results suggest that COVID-19 deaths alone cannot explain all excess mortality, and several factors may contribute to this. One key reason is that not all deaths directly attributed to the pandemic were caused by COVID-19 itself. While COVID-19 is primarily an infectious disease, it is not always immediately fatal, particularly in its later stages. In fact, one of the most significant concerns associated with COVID-19 is its impact on people with pre-existing conditions, especially the elderly. COVID-19 can exacerbate underlying diseases like heart disease, diabetes, and respiratory conditions, making individuals more susceptible to death. Furthermore, even after recovery, individuals may face long-term health consequences, including chronic fatigue, lung damage, and neurological effects. This long-term damage, often referred to as post-acute sequelae of SARS-CoV-2 infection (PASC), could contribute to excess deaths months after recovery. Thus, the impact of COVID-19 on overall mortality may extend beyond immediate death tolls, leading to a time lag between infection and death.</p>
+<p>Regarding the consistency in the states with the lowest and highest excess death rates across waves, this persistence likely reflects broader systemic factors that were in place throughout the pandemic. States like South Dakota, with low population density, may have benefitted from slower COVID-19 transmission, as fewer people living in closer proximity means less frequent spread of the virus. Lower population density can limit the rapid spread of infectious diseases like COVID-19, leading to lower excess mortality in these states. In contrast, Florida, with its higher population density, particularly in urban areas, may have faced challenges in controlling the virus’ spread. Higher population density increases the likelihood of COVID-19 transmission, as people are in closer contact with one another, making it harder to implement effective social distancing measures.</p>
+<p>Our project has a few notable limitations. First, the reliance on reported case and death data may introduce biases due to underreporting or inconsistencies in surveillance systems. Additionally, While extrapolation techniques allow for comprehensive data coverage through 2024, these projections are inherently uncertain and should be interpreted cautiously. When investigating trends in virulence, the use of death rates as a measure of virulence does not account for other negative outcomes of COVID-19 such as long COVID. Finally, this analysis did not incorporate vaccination or hospitalization rates, so generalizations about pandemic severity could be more accurate had these factors been considered.</p>
+<p>Despite these limitations, the findings provide actionable insights for future public health efforts. Policymakers should prioritize investments in equitable healthcare access and outbreak control measures at the community level. Future research could focus on improving COVID-19 surveillance to facilitate analyses on recent trends in cases and deaths. Additionally, further investigation into the impact of SARS-CoV-2 evolution on virulence could inform strategies for managing future upticks in cases and deaths.</p>
+<p>In conclusion, this study highlights the substantial geographic and temporal disparities in COVID-19 mortality across the United States during the pandemic. By identifying key factors that influenced outcomes, the findings offer valuable lessons for strengthening pandemic preparedness and response. Addressing state-level inequities and ensuring access to healthcare is essential to preventing public health emergencies.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
