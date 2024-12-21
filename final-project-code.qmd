@@ -1,0 +1,113 @@
+---
+title: "260-final-project"
+format: html
+editor: visual
+---
+
+```{r load libraries, output=FALSE}
+library(tidyverse)
+```
+
+## Task 1: Divide the pandemic period, January 2020 to December 2024, into waves. Justify your choice with data visualization.
+
+```{r plotting cases & deaths, warning=FALSE}
+df <- read_csv("~/260-project/data/cleaned-project-data.csv")
+
+df_rates <- df %>% mutate(cases_per_100000 = new_cases/population*100000,
+                   deaths_per_100000 = new_deaths/population*100000) %>%
+  select(end_date, state, cases_per_100000, deaths_per_100000)
+p <- df_rates %>% pivot_longer(c(cases_per_100000, deaths_per_100000),
+               values_to = "rate",
+               names_to = "outcome") %>%
+  ggplot(aes(end_date, rate, color = state, group = state)) +
+  geom_line() +
+  facet_wrap(~outcome, nrow=2, scales = "free_y") +
+  scale_x_date(
+    date_breaks = "3 months",
+    date_labels = "%b %Y"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  ggtitle('COVID-19 Cases and Deaths by State Overtime')
+print(p)
+```
+
+Using the visualization above, we divided the pandemic into four waves. The first three represent major peaks in both COVID-19 cases and deaths, and the fourth one is characterized by a relative plateau:
+
+-   January 2020 to July 2020
+-   August 2020 to July 2021
+-   August 2021 to April 2022
+-   May 2022 to December 2024
+
+## Task 2: For each period, compute the deaths rates by state. Describe which states did better or worse during the different periods.
+
+```{r death rates by wave}
+# assign wave value to each row
+df <- df %>%
+  mutate(
+    end_date = as.Date(end_date),
+    wave = case_when(
+      between(end_date, as.Date("2020-01-01"), as.Date("2020-07-31")) ~ '1',
+      between(end_date, as.Date("2020-08-01"), as.Date("2021-07-31")) ~ '2',
+      between(end_date, as.Date("2021-08-01"), as.Date("2022-04-30")) ~ '3',
+      between(end_date, as.Date("2022-05-01"), as.Date("2024-12-31")) ~ '4',
+      TRUE ~ NA_character_
+    )
+  )
+
+deaths_by_wave <- df %>%
+  group_by(state, wave) %>%
+  summarize(
+    deaths = sum(new_deaths, na.rm = TRUE),
+    avg_pop = mean(population, na.rm = TRUE)
+  ) %>%
+  mutate(avg_deaths_per_100000 = (deaths/avg_pop) * 100000)
+
+worst <- deaths_by_wave %>%
+  group_by(wave) %>%
+  slice_max(avg_deaths_per_100000, n = 1) %>%
+  mutate(type = "worst")
+  
+best <- deaths_by_wave %>%
+  group_by(wave) %>%
+  slice_min(avg_deaths_per_100000, n = 1) %>%
+  mutate(type = "best")
+
+results <- bind_rows(best, worst) %>%
+  arrange(wave, type) %>%
+  select(state, wave, type, avg_deaths_per_100000)
+results
+```
+
+
+
+As shown in the table above, the states with the lowest and highest COVID-19 deaths rates during each wave are as follows:
+
+-   **January 2020 to July 2020**: VI (lowest), NJ (highest)
+-   **August 2020 to July 2021**: VI (lowest), NM (highest)
+-   **August 2021 to April 2022**: VI (lowest), NM (highest)
+-   **May 2022 to December 2024**: VI (lowest), WV (highest)
+
+## Task 3: Describe if COVID-19 became less or more virulent across the different periods.
+
+```{r}
+virulence <- deaths_by_wave %>% group_by(wave) %>%
+  summarize(avg_death_rate = sum(avg_deaths_per_100000, na.rm = TRUE)/sum(avg_pop, na.rm = TRUE) * 100000)
+virulence
+```
+
+According to the table above, the average number of deaths per 100,000 population (at the national level) peaked during wave 2 and decreased during waves 3 and 4. Virulence, a virus' ability to cause harm to its host, is commonly measured through mortality. Therefore, the virulence of SARS-CoV-2 peaked early in the pandemic (between August 2020 and July 2021) and has waned since then.
+
+## Task 4: Estimate excess mortality for each week for each state. Do COVID-19 deaths explain the excess mortality?
+
+```{r}
+
+```
+
+## Task 5: For each period, compute the excess mortality rates by state. Describe which states did better or worse during the different periods.
+
+```{r}
+
+```
