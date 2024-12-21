@@ -6,12 +6,13 @@ editor: visual
 
 ```{r load libraries, output=FALSE}
 library(tidyverse)
+library(excessmort)
 ```
 
 ## Task 1: Divide the pandemic period, January 2020 to December 2024, into waves. Justify your choice with data visualization.
 
 ```{r plotting cases & deaths, warning=FALSE}
-df <- read_csv("~/260-project/data/cleaned-project-data.csv")
+df <- read_csv("./data/cleaned-project-data.csv")
 df_rates <- df %>% mutate(cases_per_100000 = new_cases/population*100000,
                    deaths_per_100000 = new_deaths/population*100000) %>%
   select(end_date, state, cases_per_100000, deaths_per_100000)
@@ -100,7 +101,21 @@ According to the table above, the average number of deaths per 100,000 populatio
 ## Task 4: Estimate excess mortality for each week for each state. Do COVID-19 deaths explain the excess mortality?
 
 ```{r}
+dat <- read_csv("./data/cleaned-deaths-data.csv")
+exclude_dates <- c(
+  seq(as.Date("2018-12-01"), as.Date("2019-03-31"), by = "day")) # Flu
 
+# Estimate deaths
+fit <- dat %>% 
+  filter(state == "AL") %>%
+  arrange(date) %>% 
+  excess_model(exclude = exclude_dates,
+               start = min(.$date),
+               end = max(.$date),
+               knots.per.year = 12,
+               verbose = TRUE)
+
+excess_mortality <- excess_cumulative(fit, start = as.Date("2021-01-22"), end = as.Date("2024-12-25"))
 ```
 
 ## Task 5: For each period, compute the excess mortality rates by state. Describe which states did better or worse during the different periods.
