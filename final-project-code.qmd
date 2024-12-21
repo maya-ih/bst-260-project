@@ -6,13 +6,14 @@ editor: visual
 
 ```{r load libraries, output=FALSE}
 library(tidyverse)
+library(excessmort)
+library(readxl)
 ```
 
 ## Task 1: Divide the pandemic period, January 2020 to December 2024, into waves. Justify your choice with data visualization.
 
 ```{r plotting cases & deaths, warning=FALSE}
-df <- read_csv("~/260-project/data/cleaned-project-data.csv")
-
+df <- read_csv("./data/cleaned-project-data.csv")
 df_rates <- df %>% mutate(cases_per_100000 = new_cases/population*100000,
                    deaths_per_100000 = new_deaths/population*100000) %>%
   select(end_date, state, cases_per_100000, deaths_per_100000)
@@ -81,8 +82,6 @@ results <- bind_rows(best, worst) %>%
 results
 ```
 
-
-
 As shown in the table above, the states with the lowest and highest COVID-19 deaths rates during each wave are as follows:
 
 -   **January 2020 to July 2020**: VI (lowest), NJ (highest)
@@ -102,12 +101,131 @@ According to the table above, the average number of deaths per 100,000 populatio
 
 ## Task 4: Estimate excess mortality for each week for each state. Do COVID-19 deaths explain the excess mortality?
 
-```{r}
+```{r data prep-processing}
+dat <- read_csv("~/260-project/data/cleaned-deaths-data.csv")
+state_pop <- read_excel("~/260-project/data/state-pop.xlsx")
 
+# reshape
+state_pop_long <- state_pop %>%
+  pivot_longer(cols = starts_with("20"), 
+               names_to = "year", 
+               values_to = "population") %>%
+  mutate(State = toupper(str_trim(State)),
+         year = as.numeric(year))
+
+# interpolate missing years in state_pop_long
+state_pop_long <- state_pop_long %>%
+  group_by(State) %>%
+  complete(year = seq(min(year), max(year))) %>%
+  arrange(State, year) %>%
+  mutate(population = zoo::na.approx(population, na.rm = FALSE)) %>% # Interpolate population
+  ungroup()
+
+# prepare dat
+dat <- dat %>%
+  mutate(date = as.Date(date),
+         year = lubridate::year(date),
+         state = toupper(str_trim(state)))
+
+# join and populate the population column
+dat <- dat %>%
+  filter(year == 2020 | year == 2021 | year == 2022 | year == 2023 | year == 2024) %>%
+  left_join(state_pop_long, by = c("state" = "State", "year" = "year")) %>%
+  mutate(population = coalesce(population.x, population.y)) %>%
+  select(-population.x, -population.y) %>%
+  drop_na()
+```
+
+```{r calculating excess deaths per week}
+# ensure dat has the required columns
+dat <- dat %>%
+  rename(
+    outcome = Outcome,
+    population = population
+  ) %>%
+  mutate(
+    date = as.Date(date),
+    week = lubridate::floor_date(date, unit = "week")
+  )
+
+# function to calculate excess deaths for a single state
+calculate_excess_deaths <- function(data, exclude_dates) {
+  data %>%
+    arrange(date) %>%
+    excess_model(
+      exclude = exclude_dates,
+      start = min(.$date),
+      end = max(.$date),
+      knots.per.year = 12,
+      include.trend = FALSE,
+      verbose = TRUE
+    )
+}
+
+# function to process excess deaths results
+process_excess_model <- function(model, state) {
+  tibble(
+    state_model = state,
+    date = model$dates,
+    observed = model$observed,
+    expected = model$expected,
+    excess = model$excess,
+    ci_lower = model$ci_lower,
+    ci_upper = model$ci_upper
+  )
+}
+
+# calculate and process excess deaths by state
+excess_deaths_results <- dat %>%
+  group_by(state) %>%
+  nest() %>%
+  mutate(
+    excess_model_result = map(data, ~ calculate_excess_deaths(.x, exclude_dates)),
+    summary = map2(excess_model_result, state, ~ process_excess_model(.x, .y))
+  ) %>%
+  select(state, summary) %>%
+  unnest(summary, names_sep = "_") %>%
+  ungroup()
+excess_deaths_results$date <- dat$date
+excess_deaths_results$population <- dat$population
+head(excess_deaths_results)
 ```
 
 ## Task 5: For each period, compute the excess mortality rates by state. Describe which states did better or worse during the different periods.
 
-```{r}
+```{r excess death per wave}
+excess_deaths_results <- excess_deaths_results %>%
+  mutate(
+    date = as.Date(date),
+    wave = case_when(
+      between(date, as.Date("2020-01-01"), as.Date("2020-07-31")) ~ '1',
+      between(date, as.Date("2020-08-01"), as.Date("2021-07-31")) ~ '2',
+      between(date, as.Date("2021-08-01"), as.Date("2022-04-30")) ~ '3',
+      between(date, as.Date("2022-05-01"), as.Date("2024-12-31")) ~ '4',
+      TRUE ~ NA_character_
+    )
+  )
 
+deaths_by_wave <- excess_deaths_results %>%
+  group_by(state, wave) %>%
+  summarize(
+    summary_observed = sum(summary_observed, na.rm = TRUE),
+    avg_pop = mean(population, na.rm = TRUE)
+  ) %>%
+  mutate(avg_excess_deaths_per_100000 = (summary_observed/avg_pop) * 100000)
+
+worst <- deaths_by_wave %>%
+  group_by(wave) %>%
+  slice_max(avg_excess_deaths_per_100000, n = 1) %>%
+  mutate(type = "worst")
+  
+best <- deaths_by_wave %>%
+  group_by(wave) %>%
+  slice_min(avg_excess_deaths_per_100000, n = 1) %>%
+  mutate(type = "best")
+
+results <- bind_rows(best, worst) %>%
+  arrange(wave, type) %>%
+  select(state, wave, type, avg_excess_deaths_per_100000)
+results
 ```
