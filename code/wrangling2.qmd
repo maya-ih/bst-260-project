@@ -98,39 +98,5 @@ final_death_data <- final_death_data %>%
 write_csv(final_death_data, "../data/cleaned-deaths-data.csv")
 ```
 
-```{r excess motarlity model fit}
-#exclusion periods
-exclude_dates <- c(
-  seq(as.Date("2018-12-01"), as.Date("2019-03-31"), by = "day"),  # Flu season
-  seq(as.Date("2020-01-01"), as.Date("20-03-31"), by = "day")  # Pandemic
-)
 
-# Estimate excess mortality
-fit <- cdc_state_counts %>% 
-  filter(state == "AK") %>%
-  arrange(date) %>% 
-  excess_model(exclude = exclude_dates,
-               start = min(.$date),
-               end = max(.$date),
-               knots.per.year = 12,
-               verbose = TRUE)
-```
 
-```{r calculate excess mortality}
-excess_mortality <- excess_cumulative(fit, start = as.Date("2021-01-22"), end = as.Date("2024-12-25"))
-```
-
-```{r adding pop estimates}
-# pivot pop data
-pop_data <- read_excel("~/260-project/data/state-pop.xlsx") %>%
-  pivot_longer(cols = starts_with("20"), names_to = "year", values_to = "population") %>%
-  mutate(year = as.integer(year), state = State) %>%
-  select(state, year, population)
-
-# merge based on state and date
-final_data <- combined_data %>%
-  mutate(year = lubridate::year(end_date)) %>%
-  left_join(pop_data, by = c("state", "year"))
-
-write_csv(final_data, "~/260-project/data/cleaned-project-data.csv")
-```
