@@ -1,0 +1,136 @@
+---
+title: "excessmortality-wrangling"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(excessmort)
+```
+
+```{r clean pre-pandemic data}
+cdc_state_counts <- cdc_state_counts %>%
+  mutate(
+    state_abbr = case_when(
+      state == "New York City" ~ "NY", 
+      state == "New York" ~ "NY",
+      state == "District of Columbia" ~ "DC", 
+      state == "Puerto Rico" ~ "PR", 
+      TRUE ~ state.abb[match(state, state.name)] )
+  )
+
+#Sum outcomes for NY and NYC
+cdc_state_counts <- cdc_state_counts %>%
+  group_by(state_abbr, date) %>%
+  summarize(
+    outcome = sum(outcome, na.rm = TRUE),            
+    outcome_unweighted = sum(outcome_unweighted, na.rm = TRUE), 
+    population = sum(population, na.rm = TRUE),       
+    .groups = "drop"                                   
+  )
+
+cdc_state_counts <- cdc_state_counts %>%
+  rename(state = state_abbr)
+
+cdc_state_counts <- cdc_state_counts %>%
+  filter(!is.na(state))
+```
+
+```{r clean pre-pandemic data}
+deaths_data <- read_csv("../data/Weekly_Counts_of_Deaths.csv")
+
+deaths_cleaned <- deaths_data %>%
+  select(`Week Ending Date`, `State Abbreviation`, `Age Group`, `Number of Deaths`) %>%
+  rename(
+    date = `Week Ending Date`,
+    state = `State Abbreviation`
+  ) %>%
+  group_by(date, state) %>%
+  mutate(Outcome = sum(`Number of Deaths`, na.rm = TRUE)) %>%
+  select(-`Age Group`, -`Number of Deaths`) %>%
+  ungroup() %>%
+  mutate(date = as.Date(date, format = "%m/%d/%Y"))
+
+#extrapolate all cause deaths
+last_date <- max(deaths_cleaned$date, na.rm = TRUE)
+future_dates <- seq(from = last_date + 7, to = as.Date("2024-12-31"), by = "7 days")
+
+source('../code/funcs2.R')
+
+extrapolate <- deaths_cleaned %>%
+  group_by(state) %>%
+  group_modify(~ extrapolate(.x, future_dates)) %>%
+  ungroup()
+
+combined_data <- bind_rows(deaths_cleaned, extrapolate)
+
+original_data <- deaths_cleaned %>% select(state, date, Outcome)
+combined_data <- bind_rows(original_data, extrapolate)
+```
+
+```{r}
+df <- read_csv("../data/cleaned-project-data.csv")
+
+combined_data <- combined_data %>%
+  filter(date >= as.Date("2017-01-14"))
+
+part1 <- combined_data %>%
+  filter(date >= as.Date("2017-01-14") & date <= as.Date("2020-01-21"))
+
+part2 <- combined_data %>%
+  filter(date > as.Date("2020-01-21") & date <= as.Date("2024-12-25"))
+
+part1 <- part1 %>%
+  left_join(cdc_state_counts, by = c("state", "date"))
+
+df <- df %>%
+  rename(date = end_date)
+
+part2 <- part2 %>%
+  left_join(df, by = c("state", "date"))
+
+final_death_data <- bind_rows(part1, part2)
+final_death_data <- final_death_data %>%
+  select(state, date, Outcome, population)
+
+write_csv(final_death_data, "../data/cleaned-deaths-data.csv")
+```
+
+```{r excess motarlity model fit}
+#exclusion periods
+exclude_dates <- c(
+  seq(as.Date("2018-12-01"), as.Date("2019-03-31"), by = "day"),  # Flu season
+  seq(as.Date("2020-01-01"), as.Date("20-03-31"), by = "day")  # Pandemic
+)
+
+# Estimate excess mortality
+fit <- cdc_state_counts %>% 
+  filter(state == "AK") %>%
+  arrange(date) %>% 
+  excess_model(exclude = exclude_dates,
+               start = min(.$date),
+               end = max(.$date),
+               knots.per.year = 12,
+               verbose = TRUE)
+```
+
+```{r calculate excess mortality}
+excess_mortality <- excess_cumulative(fit, start = as.Date("2021-01-22"), end = as.Date("2024-12-25"))
+```
+
+```{r adding pop estimates}
+# pivot pop data
+pop_data <- read_excel("~/260-project/data/state-pop.xlsx") %>%
+  pivot_longer(cols = starts_with("20"), names_to = "year", values_to = "population") %>%
+  mutate(year = as.integer(year), state = State) %>%
+  select(state, year, population)
+
+# merge based on state and date
+final_data <- combined_data %>%
+  mutate(year = lubridate::year(end_date)) %>%
+  left_join(pop_data, by = c("state", "year"))
+
+write_csv(final_data, "~/260-project/data/cleaned-project-data.csv")
+```
