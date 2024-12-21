@@ -102,8 +102,8 @@ According to the table above, the average number of deaths per 100,000 populatio
 ## Task 4: Estimate excess mortality for each week for each state. Do COVID-19 deaths explain the excess mortality?
 
 ```{r data prep-processing}
-dat <- read_csv("~/260-project/data/cleaned-deaths-data.csv")
-state_pop <- read_excel("~/260-project/data/state-pop.xlsx")
+dat <- read_csv("./data/cleaned-deaths-data.csv")
+state_pop <- read_excel("./data/state-pop.xlsx")
 
 # reshape
 state_pop_long <- state_pop %>%
@@ -175,6 +175,9 @@ process_excess_model <- function(model, state) {
   )
 }
 
+#exclude flu
+exclude_dates <- c(seq(make_date(2017, 12, 16), make_date(2018, 1, 16), by = "day"))
+
 # calculate and process excess deaths by state
 excess_deaths_results <- dat %>%
   group_by(state) %>%
@@ -186,9 +189,25 @@ excess_deaths_results <- dat %>%
   select(state, summary) %>%
   unnest(summary, names_sep = "_") %>%
   ungroup()
+
 excess_deaths_results$date <- dat$date
 excess_deaths_results$population <- dat$population
 head(excess_deaths_results)
+
+#see if it captures the difference
+excess_deaths_results <- excess_deaths_results %>%
+  mutate(
+    difference = summary_observed - summary_expected,
+    is_positive_difference = ifelse(difference > 0, TRUE, FALSE)
+  )
+
+summary_counts <- excess_deaths_results %>%
+  summarize(
+    true_count = sum(is_positive_difference == TRUE),
+    false_count = sum(is_positive_difference == FALSE)
+  )
+
+summary_counts
 ```
 
 ## Task 5: For each period, compute the excess mortality rates by state. Describe which states did better or worse during the different periods.
